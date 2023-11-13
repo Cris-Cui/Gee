@@ -8,9 +8,7 @@ package main
 */
 
 import (
-	"fmt"
 	"gee"
-	"html/template"
 	"log"
 	"net/http"
 	"time"
@@ -27,17 +25,9 @@ func onlyForV2() gee.HandlerFunc {
 	}
 }
 
-func FormatAsDate(t time.Time) string {
-	year, month, day := t.Date()
-	return fmt.Sprintf("%d-%02d-%02d", year, month, day)
-}
-
 func main() {
-	r := gee.New()
-	r.Use(gee.Logger()) // global midlleware
-	r.SetFuncMap(template.FuncMap{
-		"FormatAsDate": FormatAsDate,
-	})
+	r := gee.Default()
+
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./static")
 
@@ -53,6 +43,12 @@ func main() {
 			c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)
 		})
 	}
+
+	// index out of range for testing Recovery()
+	r.GET("/panic", func(c *gee.Context) {
+		names := []string{"cxj"}
+		c.String(http.StatusOK, names[100])
+	})
 
 	r.Run(":8080")
 }
