@@ -10,44 +10,37 @@ type HandlerFunc func(*Context)
 
 // Engine implement the interface of ServeHTTP
 type Engine struct {
-	// *RouterGroup
-	router *router
-	groups []*RouterGroup // Engine为顶层分组, 包含所有的分组
+	*RouterGroup
 }
 
 // RouterGroup 路由分组
 type RouterGroup struct {
 	prefix      string        // 分组前缀
 	middlewares []HandlerFunc // 中间件支持
-	parent      *RouterGroup  // 父节点
-	engine      *Engine       // 所有分组共享一个Engine句柄
+	router      *router       // 路由注册与匹配
 }
 
 // New is the constructor of gee.Engine
 func New() *Engine {
-	engine := &Engine{router: newRouter()}
-	engine.RouterGroup = &RouterGroup{engine: engine}
-	engine.groups = []*RouterGroup{engine.RouterGroup}
+	engine := &Engine{}
+	engine.RouterGroup = &RouterGroup{router: newRouter()}
 	return engine
 }
 
 // Group is defined to create a new RouterGroup
 // remember all groups share the same Engine instance
 func (group *RouterGroup) Group(prefix string) *RouterGroup {
-	engine := group.engine
 	newGroup := &RouterGroup{
 		prefix: group.prefix + prefix,
-		parent: group,
-		engine: engine,
+		router: group.router,
 	}
-	engine.groups = append(engine.groups, newGroup)
 	return newGroup
 }
 
 func (group *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
 	pattern := group.prefix + comp
 	log.Printf("Route %4s - %s", method, pattern)
-	group.engine.router.addRoute(method, pattern, handler)
+	group.router.addRoute(method, pattern, handler)
 }
 
 // GET defines the method to add GET request
