@@ -10,12 +10,54 @@ type HandlerFunc func(*Context)
 
 // Engine implement the interface of ServeHTTP
 type Engine struct {
+	// *RouterGroup
 	router *router
+	groups []*RouterGroup // Engine为顶层分组, 包含所有的分组
+}
+
+// RouterGroup 路由分组
+type RouterGroup struct {
+	prefix      string        // 分组前缀
+	middlewares []HandlerFunc // 中间件支持
+	parent      *RouterGroup  // 父节点
+	engine      *Engine       // 所有分组共享一个Engine句柄
 }
 
 // New is the constructor of gee.Engine
 func New() *Engine {
-	return &Engine{router: newRouter()}
+	engine := &Engine{router: newRouter()}
+	engine.RouterGroup = &RouterGroup{engine: engine}
+	engine.groups = []*RouterGroup{engine.RouterGroup}
+	return engine
+}
+
+// Group is defined to create a new RouterGroup
+// remember all groups share the same Engine instance
+func (group *RouterGroup) Group(prefix string) *RouterGroup {
+	engine := group.engine
+	newGroup := &RouterGroup{
+		prefix: group.prefix + prefix,
+		parent: group,
+		engine: engine,
+	}
+	engine.groups = append(engine.groups, newGroup)
+	return newGroup
+}
+
+func (group *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
+	pattern := group.prefix + comp
+	log.Printf("Route %4s - %s", method, pattern)
+	group.engine.router.addRoute(method, pattern, handler)
+}
+
+// GET defines the method to add GET request
+func (group *RouterGroup) GET(pattern string, handler HandlerFunc) {
+	group.addRoute("GET", pattern, handler)
+}
+
+// POST defines the method to add POST request
+func (group *RouterGroup) POST(pattern string, handler HandlerFunc) {
+	group.addRoute("POST", pattern, handler)
 }
 
 func (engine *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
