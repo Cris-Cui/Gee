@@ -8,7 +8,9 @@ package main
 */
 
 import (
+	"fmt"
 	"gee"
+	"html/template"
 	"log"
 	"net/http"
 	"time"
@@ -25,11 +27,22 @@ func onlyForV2() gee.HandlerFunc {
 	}
 }
 
+func FormatAsDate(t time.Time) string {
+	year, month, day := t.Date()
+	return fmt.Sprintf("%d-%02d-%02d", year, month, day)
+}
+
 func main() {
 	r := gee.New()
 	r.Use(gee.Logger()) // global midlleware
+	r.SetFuncMap(template.FuncMap{
+		"FormatAsDate": FormatAsDate,
+	})
+	r.LoadHTMLGlob("templates/*")
+	r.Static("/static", "./static")
+
 	r.GET("/", func(c *gee.Context) {
-		c.HTML(http.StatusOK, "<h1>Hello Gee</h1>")
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
 	v2 := r.Group("/v2")
